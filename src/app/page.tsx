@@ -19,7 +19,7 @@ export default function Home() {
         <div className="container px-4 py-20 mx-auto text-center z-10 relative">
           <div className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium border border-white/10 rounded-full bg-white/5 text-primary-100 mb-8 backdrop-blur-sm">
             <Sparkles className="w-4 h-4 text-primary-400" />
-            <span>v1.0 is now live</span>
+            <span>v1.1 is now live</span>
           </div>
 
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-tight max-w-4xl mx-auto">
