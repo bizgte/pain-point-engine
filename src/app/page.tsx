@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
+export const dynamic = "force-dynamic";
 import { CheckCircle2, Sparkles, ArrowRight, Zap, Settings2, LayoutTemplate } from "lucide-react";
 import { Generator } from "@/components/generator/Generator";
 import { Settings } from "@/components/settings/Settings";
