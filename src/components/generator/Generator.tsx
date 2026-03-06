@@ -13,7 +13,7 @@ import { Settings2, LockKeyhole, AlertCircle, CheckCircle2, Loader2, Sparkles } 
 
 export function Generator() {
     const [context, setContext] = useState<UserContext>({
-        industryId: industries[0].id,
+        industryId: "pain_point_engine",
         businessName: "",
         offer: "",
         targetCustomer: "",
