@@ -75,7 +75,8 @@ export function Generator() {
             });
 
             if (!res.ok) {
-                throw new Error("Failed to generate templates.");
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || "Failed to generate templates.");
             }
 
             const data = await res.json();
@@ -92,9 +93,9 @@ export function Generator() {
                 setCustomTemplates(formattedData);
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("AI Generation failed:", error);
-            alert("Sorry, custom generation failed. Please try again or check your API keys.");
+            alert(`Generation failed! Reason: ${error.message}`);
         } finally {
             setIsGenerating(false);
         }
