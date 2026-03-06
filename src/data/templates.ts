@@ -1,6 +1,75 @@
 import { TemplateDefinition } from "@/types";
 
 export const templates: TemplateDefinition[] = [
+    // --- PAIN POINT ENGINE DEMO TEMPLATES (3 Showcase) ---
+    {
+        id: "pain-point-generic-ai",
+        industryId: "pain_point_engine",
+        name: "The 'Generic AI' Wake-Up Call",
+        type: "carousel",
+        goalTags: ["awareness", "authority"],
+        toneTags: ["bold", "professional"],
+        platformTags: ["linkedin", "instagram"],
+        variables: [
+            { key: "industry_name", label: "Your Target Industry (e.g. Real Estate)", required: true }
+        ],
+        blocks: [
+            { kind: "headline", text: "Is your AI copy making you sound exactly like your competitors?" },
+            { kind: "body", text: "If you ask ChatGPT to 'Write a post for my {{industry_name}} business', it spits out the exact same 3 boring paragraphs for everyone." },
+            { kind: "subhead", text: "Your prospects can smell generic AI from a mile away. It tells them: 'I didn't care enough to write this, so why should you care enough to read it?'" },
+            {
+                kind: "bullets", items: [
+                    "They don't want 'value'.",
+                    "They want to feel UNDERSTOOD.",
+                    "If you can't articulate their pain better than they can, they won't buy."
+                ]
+            },
+            { kind: "cta", text: "Stop publishing robot jargon. Tap the link in our bio to try our Pain Point Engine and generate copy that actually converts." }
+        ],
+        deepDiveCaption: "Most business owners think their problem is 'I don't post enough'. No, your problem is that when you DO post, you sound like a textbook.\n\nGeneric AI tools are trained to be helpful and safe, which means they write copy that is perfectly mediocre. To sell high-ticket services, you need copy that rips the band-aid off your client's deepest, most urgent pain point.\n\nOur engine was built differently. It doesn't just write text; it reverse-engineers the psychology of your ideal buyer and builds frameworks that force them to pay attention. Want to see the difference? Click the link in my bio to generate 10 free templates for your specific niche."
+    },
+    {
+        id: "pain-point-time-waster",
+        industryId: "pain_point_engine",
+        name: "The Blank Page Syndrome",
+        type: "single",
+        goalTags: ["leads"],
+        toneTags: ["friendly"],
+        platformTags: ["facebook", "instagram"],
+        variables: [
+            { key: "offer", label: "Current Lead Magnet or Trial", required: true },
+        ],
+        blocks: [
+            { kind: "headline", text: "Staring at the blinking cursor for 45 minutes again?" },
+            { kind: "body", text: "Content creation wasn't supposed to be a part-time job. You started your business to serve clients, not to agonize over whether to use an emoji in a LinkedIn hook." },
+            {
+                kind: "bullets", items: [
+                    "Stop guessing what hooks work.",
+                    "Stop staring at blank pages.",
+                    "Start generating proven frameworks in 3 seconds."
+                ]
+            },
+            { kind: "cta", text: "Get 10 hours of your week back. Grab our {{offer}} and build your entire content calendar today." }
+        ]
+    },
+    {
+        id: "pain-point-client-dms",
+        industryId: "pain_point_engine",
+        name: "The Inbound Lead Shift",
+        type: "caption",
+        goalTags: ["authority"],
+        toneTags: ["professional"],
+        platformTags: ["linkedin", "twitter"],
+        variables: [
+            { key: "result", label: "Specific Result (e.g. 5 inbound calls this week)", required: true },
+        ],
+        blocks: [
+            { kind: "headline", text: "The moment you stop 'educating' and start 'agitating', everything changes." },
+            { kind: "body", text: "Educational content gets likes. Agitating the pain point gets sales. When a prospect reads your post and thinks 'Wow, are they looking in my windows? They know exactly what I am struggling with.'... that's when they DM you." },
+            { kind: "subhead", text: "That exact shift resulted in {{result}} for our agency." },
+            { kind: "cta", text: "Learn the 3-part psychological hook framework we use. Link in the comments." }
+        ]
+    },
     // --- HVAC TEMPLATES (10) ---
     {
         id: "hvac-mythbuster-freon",

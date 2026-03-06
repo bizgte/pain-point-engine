@@ -99,10 +99,10 @@ You must return EXACTLY 10 templates.`;
             headers: { 'Content-Type': 'application/json' }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error generating custom templates:', error);
         return NextResponse.json(
-            { error: 'Failed to generate templates. Please try again later.' },
+            { error: 'Failed to generate templates. Details: ' + (error.message || 'Unknown Gemini API error.') },
             { status: 500 }
         );
     }
