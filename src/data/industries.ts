@@ -2,6 +2,45 @@ import { IndustryPack } from "@/types";
 
 export const industries: IndustryPack[] = [
     {
+        id: "pain_point_engine",
+        name: "ContEngine (Marketing Templates)",
+        icpSummary: "Small to mid-sized business owners and solo marketers who need high-converting social content but lack the time or budget for an agency.",
+        painPoints: [
+            "Most template libraries are completely generic and don't convert",
+            "Staring at a blank page not knowing what to post",
+            "Wasting hours writing copy that sounds robotic or just like everyone else",
+            "Paying expensive agency retainers just for daily social content"
+        ],
+        desiredOutcomes: [
+            "Ready-to-publish posts that actually sound like your real customers",
+            "A fast system so you always know exactly what to post next",
+            "Increased website conversions and more booked calls",
+            "Professional, on-brand content generated in seconds"
+        ],
+        objections: [
+            "Templates always look generic and spammy",
+            "AI tools just spit out robotic text that my audience ignores",
+            "My specific industry is too nuanced for templates",
+            "I don't have the time to learn and configure a complex new tool"
+        ],
+        proofPoints: [
+            "Converts your specific business context into on-brand copy instantly",
+            "Anchored in proven pain-to-outcome psychological frameworks",
+            "No prompt engineering required—just select your industry and go"
+        ],
+        offers: [
+            "Free Industry-Specific Template Pack",
+            "Custom AI Generation for Your Niche",
+            "Instant Access to Proven Ad Hooks"
+        ],
+        hookAngles: [
+            "Stop using generic Canva templates. Do this instead.",
+            "Why your social posts aren't booking calls (and how to fix it in 2 minutes).",
+            "The exact content framework that local businesses use to generate leads on autopilot."
+        ],
+        exampleKeywords: ["Content templates", "AI copywriting", "Social media templates", "Pain point marketing"]
+    },
+    {
         id: "hvac",
         name: "HVAC & AC Repair",
         icpSummary: "Local homeowners who need emergency AC repair or seasonal maintenance, prioritizing speed, reliability, and clear pricing.",
