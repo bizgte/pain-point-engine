@@ -102,7 +102,6 @@ export function Generator() {
         }
     };
 
-    // Global Image Generation logic
     const handleGenerateGlobalImage = async () => {
         const generationTarget = context.industryId === 'custom' ? context.customIndustryName : selectedIndustry?.name;
         if (!generationTarget) {
@@ -113,23 +112,19 @@ export function Generator() {
         setIsGeneratingGlobalImage(true);
         try {
             const promptContext = Object.values(context.customVariables || {}).join(", ");
-            const specificPrompt = `A premium aesthetic background for ${promptContext || generationTarget}`;
+            const specificPrompt = `A premium aesthetic background for ${promptContext || generationTarget}. Cinematic style, photography. No text, no words, visual only.`;
+            const encodedPrompt = encodeURIComponent(specificPrompt);
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true`;
 
-            const res = await fetch('/api/generate-image', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    industryName: generationTarget,
-                    prompt: specificPrompt
-                })
-            });
-
+            const res = await fetch(imageUrl);
             if (!res.ok) throw new Error("Failed to generate image.");
 
-            const data = await res.json();
-            if (data.imageUrl) {
-                setContext(prev => ({ ...prev, mediaUrl: data.imageUrl }));
-            }
+            const blob = await res.blob();
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setContext(prev => ({ ...prev, mediaUrl: reader.result as string }));
+            };
+            reader.readAsDataURL(blob);
         } catch (error) {
             console.error(error);
             alert("Sorry, we couldn't generate the global image right now.");
