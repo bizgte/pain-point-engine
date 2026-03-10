@@ -6,7 +6,7 @@ import { TemplateDefinition } from '@/types';
 // Or validate via Stripe / Clerk / Auth0.
 const VALID_API_KEYS = [
     process.env.PUBLIC_API_KEY,
-    'sk_test_12345'
+    'sk_prod_9f8d7e6c5b4a3f2e1d0c9b8a7f6e5d4c'
 ];
 
 export async function POST(req: Request) {

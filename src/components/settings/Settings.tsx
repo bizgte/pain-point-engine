@@ -1,7 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
 export function Settings() {
+    const [apiKeyGenerated, setApiKeyGenerated] = useState(false);
+
     return (
         <div className="container mx-auto px-4 py-12 max-w-5xl">
             <div className="mb-10 text-center">
@@ -68,7 +73,9 @@ export function Settings() {
                             <p className="text-white">POST /api/v1/templates</p>
 
                             <p className="text-primary-400 mt-4 mb-2">// Headers</p>
-                            <p className="text-white">x-api-key: <span className="text-yellow-300">sk_test_12345</span></p>
+                            <p className="text-white">x-api-key: <span className={apiKeyGenerated ? "text-green-400 font-bold" : "text-yellow-300 blur-sm select-none transition-all duration-300"}>
+                                {apiKeyGenerated ? "sk_prod_9f8d7e6c5b4a3f2e1d0c9b8a7f6e5d4c" : "sk_test_12345*************************"}
+                            </span></p>
 
                             <p className="text-primary-400 mt-4 mb-2">// Example Payload</p>
                             <pre className="text-white/80">
@@ -78,8 +85,21 @@ export function Settings() {
 }`}
                             </pre>
                         </div>
-                        <p className="text-sm text-white/50">Your API key is currently running in test mode. Upgrade to a Pro Developer account to generate live keys.</p>
-                        <Button className="mt-4" variant="outline">Generate Live Key</Button>
+                        {!apiKeyGenerated && (
+                            <p className="text-sm text-white/50">Your API key is currently running in test mode. Upgrade or generate a live key below.</p>
+                        )}
+                        <Button
+                            className="mt-4"
+                            variant={apiKeyGenerated ? "ghost" : "outline"}
+                            onClick={() => {
+                                setApiKeyGenerated(true);
+                                navigator.clipboard.writeText("sk_prod_9f8d7e6c5b4a3f2e1d0c9b8a7f6e5d4c");
+                                alert("Live Key generated! It has been copied to your clipboard.");
+                            }}
+                            disabled={apiKeyGenerated}
+                        >
+                            {apiKeyGenerated ? "Live Key Active & Copied!" : "Generate Live Key"}
+                        </Button>
                     </CardContent>
                 </Card>
 

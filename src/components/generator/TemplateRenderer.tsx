@@ -141,8 +141,9 @@ export function TemplateRenderer({
                     </div>
 
                     <div className="flex items-center gap-1 z-20">
-                        <Button variant="ghost" size="icon" onClick={handleGenerateLocalImage} title="Generate Background AI" className="pointer-events-auto shrink-0 h-8 w-8 hover:bg-white/10" disabled={isGeneratingImage}>
-                            {isGeneratingImage ? <Loader2 className="w-4 h-4 text-primary-400 animate-spin" /> : <Sparkles className="w-4 h-4 text-primary-300 hover:text-white" />}
+                        <Button variant="outline" size="sm" onClick={handleGenerateLocalImage} title="Generate Image" className="pointer-events-auto shrink-0 h-8 px-3 hover:bg-white/10 border-primary-500/30 text-xs font-semibold mr-1" disabled={isGeneratingImage}>
+                            {isGeneratingImage ? <Loader2 className="w-3 h-3 mr-1.5 text-primary-400 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1.5 text-primary-300" />}
+                            Generate Image
                         </Button>
                         {effectiveMediaUrl && (
                             <Button

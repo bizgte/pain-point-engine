@@ -27,6 +27,7 @@ export function Generator() {
 
     const [customTemplates, setCustomTemplates] = useState<TemplateDefinition[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isGeneratingGlobalImage, setIsGeneratingGlobalImage] = useState(false);
     const [isPremium, setIsPremium] = useState(false); // Mock Premium State
 
     // Modals
@@ -101,7 +102,41 @@ export function Generator() {
         }
     };
 
-    // Image generation moved to template level
+    // Global Image Generation logic
+    const handleGenerateGlobalImage = async () => {
+        const generationTarget = context.industryId === 'custom' ? context.customIndustryName : selectedIndustry?.name;
+        if (!generationTarget) {
+            alert("Please select or type an industry first.");
+            return;
+        }
+
+        setIsGeneratingGlobalImage(true);
+        try {
+            const promptContext = Object.values(context.customVariables || {}).join(", ");
+            const specificPrompt = `A premium aesthetic background for ${promptContext || generationTarget}`;
+
+            const res = await fetch('/api/generate-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    industryName: generationTarget,
+                    prompt: specificPrompt
+                })
+            });
+
+            if (!res.ok) throw new Error("Failed to generate image.");
+
+            const data = await res.json();
+            if (data.imageUrl) {
+                setContext(prev => ({ ...prev, mediaUrl: data.imageUrl }));
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Sorry, we couldn't generate the global image right now.");
+        } finally {
+            setIsGeneratingGlobalImage(false);
+        }
+    };
 
     return (
         <div id="generate" className="container mx-auto px-4 py-12">
@@ -175,6 +210,19 @@ export function Generator() {
                                             }}
                                             className="text-white/60 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 cursor-pointer h-auto py-2"
                                         />
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-white/40 text-xs">or</span>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="w-full text-xs h-8 border-primary-500/30 hover:bg-white/10"
+                                                onClick={handleGenerateGlobalImage}
+                                                disabled={isGeneratingGlobalImage}
+                                            >
+                                                {isGeneratingGlobalImage ? <Loader2 className="w-3 h-3 mr-2 animate-spin" /> : <Sparkles className="w-3 h-3 mr-2 text-primary-300" />}
+                                                Generate Image using AI
+                                            </Button>
+                                        </div>
                                     </div>
                                     {context.mediaUrl && (
                                         <div className="mt-2 text-xs text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Global Media attached</div>
