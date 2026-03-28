@@ -75,18 +75,21 @@ const FEATURES = [
     desc: "Switch between Pain-Point, Story, Educational, Entertainment, and Brand modes — each tuned to a different audience psychology. Our AI adapts tone, structure, and hook formula automatically.",
     gradient: "from-cyan-500 to-blue-600",
     label: "Pain-Point Mode Demo",
+    video: "/videos/posts-feature.mp4",
   },
   {
     title: "AI Video Generation Built In",
     desc: "Route your content to the best video AI automatically. WaveSpeed for social reels, Kie Sora-2 for stories, cinematic engine for commercials. Just write the brief — we handle the rest.",
     gradient: "from-purple-500 to-pink-600",
     label: "Video Router Preview",
+    video: "/videos/video-feature.mp4",
   },
   {
     title: "Brand DNA Always On",
     desc: "Set your brand voice, tone, and industry once. Every piece of content — from a tweet to a 60-second reel — stays on-brand, every time.",
     gradient: "from-emerald-500 to-cyan-600",
     label: "Brand Settings Demo",
+    video: "/videos/blog-feature.mp4",
   },
 ];
 
@@ -224,23 +227,21 @@ function Hero() {
           </div>
         </div>
 
-        {/* Right — Video mosaic placeholders */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Pain-Point Reel", gradient: "from-red-500 to-orange-600" },
-            { label: "Brand Story", gradient: "from-purple-500 to-blue-600" },
-            { label: "Educational", gradient: "from-cyan-500 to-blue-500" },
-            { label: "UGC Ad", gradient: "from-amber-500 to-red-500" },
-            { label: "Product Video", gradient: "from-emerald-500 to-cyan-500" },
-            { label: "Social Reel", gradient: "from-pink-500 to-purple-600" },
-          ].map((item, i) => (
-            <div
-              key={i}
-              className={`aspect-[9/16] rounded-xl bg-gradient-to-b ${item.gradient} flex flex-col items-center justify-end p-3 opacity-80 hover:opacity-100 transition-opacity`}
-            >
-              <span className="text-xs text-white/80 font-medium text-center leading-tight">{item.label}</span>
+        {/* Right — Video mosaic */}
+        <div className="relative w-full">
+          <div className="absolute -bottom-1 inset-x-0 h-20 bg-gradient-to-t from-[#0a0a0a] to-transparent z-10 pointer-events-none rounded-b-2xl" />
+          <div className="flex gap-2 h-[320px] overflow-hidden rounded-2xl">
+            <video src="/videos/carousel-preview.mp4" autoPlay muted loop playsInline
+              className="w-[42%] h-full object-cover rounded-xl flex-shrink-0" />
+            <video src="/videos/reel-preview.mp4" autoPlay muted loop playsInline
+              className="w-[27%] h-full object-cover rounded-xl flex-shrink-0" />
+            <div className="flex flex-col gap-2 flex-1">
+              <video src="/videos/ugc-preview.mp4" autoPlay muted loop playsInline
+                className="flex-1 w-full object-cover rounded-xl" style={{objectFit:"cover"}} />
+              <video src="/videos/product-video-preview.mp4" autoPlay muted loop playsInline
+                className="flex-1 w-full object-cover rounded-xl" style={{objectFit:"cover"}} />
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </section>
@@ -368,18 +369,15 @@ function FeatureShowcase() {
               <h3 className="text-3xl font-black text-white mb-4">{f.title}</h3>
               <p className="text-white/60 text-lg leading-relaxed">{f.desc}</p>
             </div>
-            {/* Placeholder video box */}
-            <div
-              className={`rounded-2xl aspect-video bg-gradient-to-br ${f.gradient} flex items-center justify-center ${
-                i % 2 === 1 ? "lg:order-1" : ""
-              }`}
-            >
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-full border-2 border-white/40 flex items-center justify-center mx-auto mb-3">
-                  <div className="w-0 h-0 border-t-4 border-b-4 border-l-8 border-t-transparent border-b-transparent border-l-white/70 ml-1" />
-                </div>
-                <span className="text-white/60 text-sm">{f.label}</span>
-              </div>
+            {/* Feature video */}
+            <div className={`rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative ${i % 2 === 1 ? "lg:order-1" : ""}`}>
+              <video
+                src={f.video}
+                autoPlay muted loop playsInline
+                data-scroll-play
+                className="w-full aspect-video object-cover"
+              />
+              <div className="absolute inset-0 pointer-events-none rounded-2xl ring-1 ring-inset ring-white/10" />
             </div>
           </div>
         ))}
