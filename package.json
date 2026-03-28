@@ -10,16 +10,21 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@stripe/stripe-js": "^9.0.0",
+    "@supabase/ssr": "^0.9.0",
+    "@supabase/supabase-js": "^2.100.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cookie": "^1.1.1",
     "framer-motion": "^12.34.5",
+    "geist": "^1.7.0",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.576.0",
     "next": "16.1.6",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "stripe": "^21.0.1",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {

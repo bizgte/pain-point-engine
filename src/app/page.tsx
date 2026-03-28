@@ -1,100 +1,591 @@
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent } from "@/components/ui/Card";
-export const dynamic = "force-dynamic";
-import { CheckCircle2, Sparkles, ArrowRight, Zap, Settings2, LayoutTemplate } from "lucide-react";
-import { Generator } from "@/components/generator/Generator";
-import { Settings } from "@/components/settings/Settings";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+"use client";
 
-export default function Home() {
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
+
+const STATS = [
+  { value: "50,000+", label: "Content Pieces Generated" },
+  { value: "120+", label: "Industries Covered" },
+  { value: "5", label: "Content Modes" },
+  { value: "98%", label: "Positive Feedback" },
+];
+
+const INDUSTRIES = [
+  "SaaS", "Real Estate", "E-commerce", "Finance", "Healthcare",
+  "Education", "Fitness", "Legal", "Marketing", "Consulting",
+  "Restaurant", "Travel", "Fashion", "Tech", "Insurance",
+];
+
+const MODES = [
+  {
+    id: "pain_point", emoji: "🎯", label: "Pain-Point",
+    color: "#ef4444", bg: "rgba(239,68,68,0.08)",
+    desc: "Call out the exact pain, then offer relief. High-conversion hooks.",
+  },
+  {
+    id: "story", emoji: "📖", label: "Story",
+    color: "#8b5cf6", bg: "rgba(139,92,246,0.08)",
+    desc: "Narrative arc that builds emotional connection and brand loyalty.",
+  },
+  {
+    id: "educational", emoji: "🎓", label: "Educational",
+    color: "#0ea5e9", bg: "rgba(14,165,233,0.08)",
+    desc: "Teach something valuable in a shareable, authority-building format.",
+  },
+  {
+    id: "entertainment", emoji: "🎭", label: "Entertainment",
+    color: "#f59e0b", bg: "rgba(245,158,11,0.08)",
+    desc: "Entertain first, sell second. Viral-ready social content.",
+  },
+  {
+    id: "brand", emoji: "🏢", label: "Brand",
+    color: "#10b981", bg: "rgba(16,185,129,0.08)",
+    desc: "Build authority and trust with polished brand storytelling.",
+  },
+];
+
+const TOOLS = {
+  Written: [
+    { name: "Social Post", desc: "Pain-point hooks for any platform", credits: 1, icon: "✍️" },
+    { name: "Blog Article", desc: "Long-form SEO-ready content", credits: 3, icon: "📝" },
+    { name: "Email Sequence", desc: "Nurture flows that convert", credits: 2, icon: "📧" },
+    { name: "Ad Copy", desc: "High-CTR ad creatives", credits: 2, icon: "📣" },
+  ],
+  Video: [
+    { name: "Social Reel", desc: "Pain-point reels + UGC ads", credits: 5, icon: "🎬" },
+    { name: "Product Video", desc: "Cinematic product showcases", credits: 5, icon: "🎥" },
+    { name: "Story Video", desc: "Brand stories + testimonials", credits: 5, icon: "🎞️" },
+    { name: "Educational Clip", desc: "Explainers + documentaries", credits: 5, icon: "🎓" },
+  ],
+  Visual: [
+    { name: "AI Image", desc: "Brand-consistent visuals", credits: 1, icon: "🖼️" },
+    { name: "Social Graphic", desc: "Platform-sized graphics", credits: 1, icon: "🎨" },
+  ],
+  Social: [
+    { name: "Content Calendar", desc: "30-day content plans", credits: 5, icon: "📅" },
+    { name: "Hashtag Pack", desc: "Reach-maximising tag sets", credits: 1, icon: "#️⃣" },
+  ],
+};
+
+const FEATURES = [
+  {
+    title: "5 Content Modes, Infinite Output",
+    desc: "Switch between Pain-Point, Story, Educational, Entertainment, and Brand modes — each tuned to a different audience psychology. Our AI adapts tone, structure, and hook formula automatically.",
+    gradient: "from-cyan-500 to-blue-600",
+    label: "Pain-Point Mode Demo",
+  },
+  {
+    title: "AI Video Generation Built In",
+    desc: "Route your content to the best video AI automatically. WaveSpeed for social reels, Kie Sora-2 for stories, cinematic engine for commercials. Just write the brief — we handle the rest.",
+    gradient: "from-purple-500 to-pink-600",
+    label: "Video Router Preview",
+  },
+  {
+    title: "Brand DNA Always On",
+    desc: "Set your brand voice, tone, and industry once. Every piece of content — from a tweet to a 60-second reel — stays on-brand, every time.",
+    gradient: "from-emerald-500 to-cyan-600",
+    label: "Brand Settings Demo",
+  },
+];
+
+const TEMPLATES = [
+  { title: "3 Signs Your [Industry] Is Losing Customers", mode: "Pain-Point" },
+  { title: "How I Grew From 0 to 10k Followers in 90 Days", mode: "Story" },
+  { title: "5 Things Nobody Tells You About [Topic]", mode: "Educational" },
+  { title: "POV: You Finally Fixed [Problem]", mode: "Entertainment" },
+  { title: "Why [Brand] Is Different (And Why It Matters)", mode: "Brand" },
+  { title: "The #1 Mistake [Audience] Makes With [Topic]", mode: "Pain-Point" },
+  { title: "My Client Went From [A] to [B] in 30 Days", mode: "Story" },
+  { title: "Thread: Everything Wrong With [Industry]", mode: "Educational" },
+];
+
+const FAQS = [
+  { q: "What is ContEngine?", a: "ContEngine is an AI content platform that generates industry-specific, pain-point-driven content across 5 psychological modes — written posts, videos, images, and social calendars." },
+  { q: "Do I need video API keys to use ContEngine?", a: "No. The text and image tools work immediately. Video generation is activated separately when you add your WaveSpeed or Kie API keys in settings." },
+  { q: "What's a credit?", a: "Credits are consumed per generation: posts=1, images=1, emails=2, ads=2, blogs=3, videos=5, calendars=5. Free tier gets 10 credits/month." },
+  { q: "How does the video router work?", a: "ContEngine analyses your content mode and quality setting, then automatically routes to the best AI model — WaveSpeed for social reels, Kie Sora-2 for stories, cinematic engine for commercials." },
+  { q: "Can I use ContEngine for client work?", a: "Yes. The Pro plan includes 1000 credits/month. You can set separate brand profiles and generate content for multiple clients." },
+  { q: "Is my data private?", a: "Yes. We do not use your content or brand data to train any AI models. Your inputs are sent only to the AI provider required for your generation." },
+];
+
+const PRICING = [
+  {
+    name: "Free", monthly: 0, annual: 0, credits: 10,
+    features: ["10 credits / month", "All 5 content modes", "Social post generator", "Community support"],
+    cta: "Get Started Free", highlight: false,
+  },
+  {
+    name: "Plus", monthly: 19, annual: 149, credits: 200,
+    features: ["200 credits / month", "All tools unlocked", "Video generation (bring your keys)", "Brand profile", "Priority support"],
+    cta: "Start Plus", highlight: true,
+  },
+  {
+    name: "Pro", monthly: 49, annual: 399, credits: 1000,
+    features: ["1,000 credits / month", "Everything in Plus", "30-day content calendar", "Multi-brand profiles", "Dedicated support"],
+    cta: "Go Pro", highlight: false,
+  },
+];
+
+// ─── Components ───────────────────────────────────────────────────────────────
+
+function AnnouncementBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
-    <>
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] relative">
-        {/* Background Gradients */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-primary-600/20 blur-[120px] mix-blend-screen" />
-          <div className="absolute top-[40%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-900/30 blur-[100px] mix-blend-screen" />
+    <div className="relative z-50 bg-cyan-500 text-black text-center py-2 px-4 text-sm font-medium">
+      🚀 ContEngine v2 is live — 5 content modes, AI video routing, and more.{" "}
+      <Link href="/dashboard" className="underline font-bold">Try it free →</Link>
+      <button
+        onClick={onDismiss}
+        className="absolute right-4 top-1/2 -translate-y-1/2 text-black/60 hover:text-black text-lg leading-none"
+        aria-label="Dismiss"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+function Navbar({ scrolled }: { scrolled: boolean }) {
+  return (
+    <nav
+      className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
+        scrolled ? "bg-black/80 backdrop-blur-md border-b border-white/10" : "bg-transparent"
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-cyan-500 flex items-center justify-center text-black font-black text-sm">C</div>
+          <span className="font-bold text-white text-lg">ContEngine</span>
+        </Link>
+
+        <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
+          <a href="#modes" className="hover:text-white transition-colors">Modes</a>
+          <a href="#tools" className="hover:text-white transition-colors">Tools</a>
+          <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+          <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
         </div>
 
-        <div className="container px-4 py-20 mx-auto text-center z-10 relative">
-          <div className="inline-flex items-center gap-2 px-3 py-1 text-sm font-medium border border-white/10 rounded-full bg-white/5 text-primary-100 mb-8 backdrop-blur-sm">
-            <Sparkles className="w-4 h-4 text-primary-400" />
-            <span>v1.1 is now live</span>
+        <div className="flex items-center gap-3">
+          <Link href="/auth/login" className="text-sm text-white/70 hover:text-white transition-colors hidden md:block">
+            Sign in
+          </Link>
+          <Link
+            href="/auth/signup"
+            className="px-4 py-2 rounded-lg bg-cyan-500 text-black text-sm font-semibold hover:bg-cyan-400 transition-colors"
+          >
+            Get Started Free
+          </Link>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function Hero() {
+  return (
+    <section className="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden">
+      {/* BG radial */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(14,165,233,0.15),transparent_70%)]" />
+
+      <div className="relative z-10 max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center py-24">
+        {/* Left */}
+        <div>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-sm mb-8">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            AI Content Platform — 5 Psychological Modes
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-tight max-w-4xl mx-auto">
-            Convert Pain Points into <span className="text-gradient">Ready-to-Post</span> Templates.
+          <h1 className="text-5xl lg:text-6xl font-black text-white leading-[1.05] mb-6">
+            Content That{" "}
+            <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              Converts
+            </span>
+            ,<br />Not Just Fills Feeds
           </h1>
 
-          <p className="text-lg md:text-xl text-white/70 mb-10 max-w-2xl mx-auto">
-            Choose your industry. Select your goals. Generate high-converting social content instantly. No generic fluff, just proven psychology.
+          <p className="text-xl text-white/60 mb-10 leading-relaxed max-w-lg">
+            Generate pain-point posts, brand stories, educational threads, videos, and social calendars — all tuned to your industry and audience.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <a href="#generate" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full text-base group">
-                Start Generating Free
-                <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
+          <div className="flex flex-wrap gap-4">
+            <Link
+              href="/auth/signup"
+              className="px-6 py-3 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors text-base"
+            >
+              Start Free — 10 Credits
+            </Link>
+            <a
+              href="#modes"
+              className="px-6 py-3 rounded-xl border border-white/20 text-white font-semibold hover:border-white/40 transition-colors text-base"
+            >
+              See All Modes →
             </a>
-            <Button variant="outline" size="lg" className="w-full sm:w-auto text-base">
-              View Example Packs
-            </Button>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto text-left">
-            <Card className="bg-white/5 hover:bg-white/10 transition-colors border-white/10">
-              <CardContent className="p-6">
-                <Zap className="w-8 h-8 text-primary-400 mb-4" />
-                <h3 className="text-lg font-semibold mb-2 text-white">Industry Tuned</h3>
-                <p className="text-white/60 text-sm">Pre-built packs for HVAC, Realtors, SaaS, and more. Authentic voices only.</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/5 hover:bg-white/10 transition-colors border-white/10">
-              <CardContent className="p-6">
-                <CheckCircle2 className="w-8 h-8 text-primary-400 mb-4" />
-                <h3 className="text-lg font-semibold mb-2 text-white">Psychology First</h3>
-                <p className="text-white/60 text-sm">Every template maps a core customer pain point to your direct solution.</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/5 hover:bg-white/10 transition-colors border-white/10">
-              <CardContent className="p-6">
-                <Sparkles className="w-8 h-8 text-primary-400 mb-4" />
-                <h3 className="text-lg font-semibold mb-2 text-white">Ready to Publish</h3>
-                <p className="text-white/60 text-sm">Export instantly in single post, carousel, or short video ad script formats.</p>
-              </CardContent>
-            </Card>
+        {/* Right — Video mosaic placeholders */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Pain-Point Reel", gradient: "from-red-500 to-orange-600" },
+            { label: "Brand Story", gradient: "from-purple-500 to-blue-600" },
+            { label: "Educational", gradient: "from-cyan-500 to-blue-500" },
+            { label: "UGC Ad", gradient: "from-amber-500 to-red-500" },
+            { label: "Product Video", gradient: "from-emerald-500 to-cyan-500" },
+            { label: "Social Reel", gradient: "from-pink-500 to-purple-600" },
+          ].map((item, i) => (
+            <div
+              key={i}
+              className={`aspect-[9/16] rounded-xl bg-gradient-to-b ${item.gradient} flex flex-col items-center justify-end p-3 opacity-80 hover:opacity-100 transition-opacity`}
+            >
+              <span className="text-xs text-white/80 font-medium text-center leading-tight">{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StatsRow() {
+  return (
+    <section className="border-y border-white/10 bg-white/[0.02]">
+      <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        {STATS.map((s) => (
+          <div key={s.label}>
+            <div className="text-3xl font-black text-white mb-1">{s.value}</div>
+            <div className="text-sm text-white/50">{s.label}</div>
           </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function IndustryMarquee() {
+  const doubled = [...INDUSTRIES, ...INDUSTRIES];
+  return (
+    <div className="overflow-hidden py-4 border-b border-white/10">
+      <div className="flex gap-6 animate-marquee whitespace-nowrap">
+        {doubled.map((ind, i) => (
+          <span key={i} className="text-sm text-white/30 font-medium shrink-0 px-2">
+            {ind}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ModesSection() {
+  return (
+    <section id="modes" className="py-24 max-w-7xl mx-auto px-6">
+      <div className="text-center mb-16">
+        <h2 className="text-4xl font-black text-white mb-4">5 Content Modes</h2>
+        <p className="text-lg text-white/50 max-w-xl mx-auto">
+          Each mode uses a different psychological framework — pick the one that fits your goal.
+        </p>
+      </div>
+      <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {MODES.map((m) => (
+          <div
+            key={m.id}
+            className="rounded-2xl border p-6 hover:scale-[1.02] transition-transform cursor-pointer"
+            style={{
+              borderColor: m.color + "40",
+              background: m.bg,
+            }}
+          >
+            <div className="text-4xl mb-4">{m.emoji}</div>
+            <div className="font-bold text-white mb-2" style={{ color: m.color }}>{m.label}</div>
+            <p className="text-sm text-white/50 leading-relaxed">{m.desc}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ToolExplorer() {
+  const [tab, setTab] = useState<keyof typeof TOOLS>("Written");
+  const tabs = Object.keys(TOOLS) as (keyof typeof TOOLS)[];
+
+  return (
+    <section id="tools" className="py-24 bg-white/[0.02] border-y border-white/10">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-black text-white mb-4">Every Tool You Need</h2>
+          <p className="text-lg text-white/50">Written, video, visual, and social — all in one place.</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 justify-center mb-10 flex-wrap">
+          {tabs.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${
+                tab === t
+                  ? "bg-cyan-500 text-black"
+                  : "border border-white/20 text-white/60 hover:border-white/40 hover:text-white"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {/* Tool cards */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {TOOLS[tab].map((tool) => (
+            <div
+              key={tool.name}
+              className="rounded-xl border border-white/10 bg-white/[0.03] p-5 hover:border-cyan-500/40 transition-colors"
+            >
+              <div className="text-3xl mb-3">{tool.icon}</div>
+              <div className="font-bold text-white mb-1">{tool.name}</div>
+              <p className="text-sm text-white/50 mb-3">{tool.desc}</p>
+              <div className="text-xs text-cyan-400">{tool.credits} credit{tool.credits > 1 ? "s" : ""} / generation</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FeatureShowcase() {
+  return (
+    <section className="py-24 max-w-7xl mx-auto px-6">
+      <div className="space-y-24">
+        {FEATURES.map((f, i) => (
+          <div
+            key={i}
+            className={`grid lg:grid-cols-2 gap-12 items-center ${i % 2 === 1 ? "lg:flex-row-reverse" : ""}`}
+          >
+            {/* Text — reverse order on odd items */}
+            <div className={i % 2 === 1 ? "lg:order-2" : ""}>
+              <h3 className="text-3xl font-black text-white mb-4">{f.title}</h3>
+              <p className="text-white/60 text-lg leading-relaxed">{f.desc}</p>
+            </div>
+            {/* Placeholder video box */}
+            <div
+              className={`rounded-2xl aspect-video bg-gradient-to-br ${f.gradient} flex items-center justify-center ${
+                i % 2 === 1 ? "lg:order-1" : ""
+              }`}
+            >
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full border-2 border-white/40 flex items-center justify-center mx-auto mb-3">
+                  <div className="w-0 h-0 border-t-4 border-b-4 border-l-8 border-t-transparent border-b-transparent border-l-white/70 ml-1" />
+                </div>
+                <span className="text-white/60 text-sm">{f.label}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TemplateMarquee() {
+  const row1 = [...TEMPLATES, ...TEMPLATES];
+  const row2 = [...TEMPLATES.slice(4), ...TEMPLATES.slice(0, 4), ...TEMPLATES.slice(4), ...TEMPLATES.slice(0, 4)];
+  return (
+    <section className="py-16 overflow-hidden border-y border-white/10 bg-white/[0.02]">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-black text-white">Templates Ready to Use</h2>
+      </div>
+      <div className="flex gap-4 animate-marquee mb-4">
+        {row1.map((t, i) => (
+          <div key={i} className="shrink-0 rounded-xl border border-white/10 bg-white/[0.03] px-5 py-4 min-w-[260px]">
+            <div className="text-xs text-cyan-400 mb-2">{t.mode}</div>
+            <div className="text-sm text-white font-medium leading-snug">{t.title}</div>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-4 animate-marquee-reverse">
+        {row2.map((t, i) => (
+          <div key={i} className="shrink-0 rounded-xl border border-white/10 bg-white/[0.03] px-5 py-4 min-w-[260px]">
+            <div className="text-xs text-purple-400 mb-2">{t.mode}</div>
+            <div className="text-sm text-white font-medium leading-snug">{t.title}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PricingSection() {
+  const [annual, setAnnual] = useState(false);
+  return (
+    <section id="pricing" className="py-24 max-w-7xl mx-auto px-6">
+      <div className="text-center mb-12">
+        <h2 className="text-4xl font-black text-white mb-4">Simple Pricing</h2>
+        <p className="text-white/50 mb-8">Start free. Scale when you&apos;re ready.</p>
+        <div className="inline-flex items-center gap-3 rounded-full border border-white/20 p-1">
+          <button
+            onClick={() => setAnnual(false)}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${!annual ? "bg-white text-black" : "text-white/60"}`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setAnnual(true)}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${annual ? "bg-white text-black" : "text-white/60"}`}
+          >
+            Annual <span className="text-cyan-400 text-xs ml-1">Save ~35%</span>
+          </button>
         </div>
       </div>
 
-      {/* Main App Section */}
-      <div className="w-full border-t border-white/10 bg-black/50 backdrop-blur-md relative z-10 pt-8 pb-20" id="app">
-        <div className="container mx-auto px-4">
-          <Tabs defaultValue="generator" className="w-full">
-            <div className="flex justify-center mb-8">
-              <TabsList className="bg-white/5 border border-white/10 w-full max-w-sm grid grid-cols-2 p-1">
-                <TabsTrigger value="generator" className="data-[state=active]:bg-primary-600 data-[state=active]:text-white transition-all">
-                  <LayoutTemplate className="w-4 h-4 mr-2" />
-                  Generator
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="data-[state=active]:bg-white/10 data-[state=active]:text-white transition-all">
-                  <Settings2 className="w-4 h-4 mr-2" />
-                  Settings & API
-                </TabsTrigger>
-              </TabsList>
+      <div className="grid md:grid-cols-3 gap-6">
+        {PRICING.map((plan) => (
+          <div
+            key={plan.name}
+            className={`rounded-2xl border p-8 flex flex-col ${
+              plan.highlight
+                ? "border-cyan-500 bg-cyan-500/10 relative"
+                : "border-white/10 bg-white/[0.03]"
+            }`}
+          >
+            {plan.highlight && (
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-cyan-500 text-black text-xs font-bold px-4 py-1 rounded-full">
+                Most Popular
+              </div>
+            )}
+            <div className="mb-6">
+              <div className="text-xl font-black text-white mb-2">{plan.name}</div>
+              <div className="flex items-end gap-1 mb-1">
+                <span className="text-4xl font-black text-white">
+                  ${annual ? (plan.annual === 0 ? 0 : Math.round(plan.annual / 12)) : plan.monthly}
+                </span>
+                <span className="text-white/40 text-sm mb-2">/mo</span>
+              </div>
+              {annual && plan.annual > 0 && (
+                <div className="text-sm text-cyan-400">${plan.annual}/yr billed annually</div>
+              )}
+              <div className="text-sm text-white/50 mt-2">{plan.credits} credits / month</div>
             </div>
 
-            <TabsContent value="generator" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
-              <Generator />
-            </TabsContent>
+            <ul className="space-y-3 mb-8 flex-grow">
+              {plan.features.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-white/70">
+                  <span className="text-cyan-400 mt-0.5">✓</span>
+                  {f}
+                </li>
+              ))}
+            </ul>
 
-            <TabsContent value="settings" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
-              <Settings />
-            </TabsContent>
-          </Tabs>
-        </div>
+            <Link
+              href="/auth/signup"
+              className={`w-full text-center py-3 rounded-xl font-bold text-sm transition-colors ${
+                plan.highlight
+                  ? "bg-cyan-500 text-black hover:bg-cyan-400"
+                  : "border border-white/20 text-white hover:border-white/40"
+              }`}
+            >
+              {plan.cta}
+            </Link>
+          </div>
+        ))}
       </div>
-    </>
+    </section>
+  );
+}
+
+function FAQSection() {
+  const [open, setOpen] = useState<number | null>(null);
+  return (
+    <section id="faq" className="py-24 max-w-3xl mx-auto px-6">
+      <h2 className="text-4xl font-black text-white text-center mb-12">Frequently Asked</h2>
+      <div className="space-y-3">
+        {FAQS.map((faq, i) => (
+          <div key={i} className="rounded-xl border border-white/10 overflow-hidden">
+            <button
+              onClick={() => setOpen(open === i ? null : i)}
+              className="w-full flex items-center justify-between px-6 py-4 text-left text-white font-semibold hover:bg-white/[0.03] transition-colors"
+            >
+              {faq.q}
+              <span className={`text-white/40 transition-transform ${open === i ? "rotate-45" : ""}`}>+</span>
+            </button>
+            {open === i && (
+              <div className="px-6 pb-5 text-white/60 text-sm leading-relaxed border-t border-white/10 pt-4">
+                {faq.a}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CTABanner() {
+  return (
+    <section className="py-24 px-6">
+      <div className="max-w-3xl mx-auto text-center rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-blue-600/10 p-16">
+        <h2 className="text-4xl font-black text-white mb-4">Ready to Create Content That Converts?</h2>
+        <p className="text-white/60 mb-8 text-lg">Start free. No credit card required. 10 credits on signup.</p>
+        <Link
+          href="/auth/signup"
+          className="inline-block px-8 py-4 rounded-xl bg-cyan-500 text-black font-bold text-lg hover:bg-cyan-400 transition-colors"
+        >
+          Get Started Free →
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-white/10 py-12 px-6">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-cyan-500 flex items-center justify-center text-black font-black text-sm">C</div>
+          <span className="font-bold text-white">ContEngine</span>
+        </div>
+        <div className="flex gap-8 text-sm text-white/40">
+          <a href="#" className="hover:text-white transition-colors">Privacy</a>
+          <a href="#" className="hover:text-white transition-colors">Terms</a>
+          <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
+        </div>
+        <div className="text-sm text-white/30">© 2025 ContEngine. All rights reserved.</div>
+      </div>
+    </footer>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+export default function HomePage() {
+  const [banner, setBanner] = useState(true);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      {banner && <AnnouncementBanner onDismiss={() => setBanner(false)} />}
+      <div className={banner ? "pt-10" : ""}>
+        <Navbar scrolled={scrolled} />
+        <Hero />
+        <StatsRow />
+        <IndustryMarquee />
+        <ModesSection />
+        <ToolExplorer />
+        <FeatureShowcase />
+        <TemplateMarquee />
+        <PricingSection />
+        <FAQSection />
+        <CTABanner />
+        <Footer />
+      </div>
+    </div>
   );
 }
