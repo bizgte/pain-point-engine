@@ -1,3 +1,7 @@
+const BASE_URL = "https://api.wavespeed.ai/api/v1";
+const RESULT_BASE = "https://api.wavespeed.ai/api/v2/predictions";
+
+// ── Types ────────────────────────────────────────────────────────────────────
 export interface WaveSpeedJobRequest {
   endpoint: string;
   prompt: string;
@@ -17,9 +21,7 @@ export interface WaveSpeedImageResponse {
   error?: string;
 }
 
-const BASE_URL = "https://api.wavespeed.ai";
-
-// ── Image generation (flux-schnell) ─────────────────────────────────────────
+// ── Image generation (flux-schnell, async with poll) ─────────────────────────
 export async function generateWaveSpeedImage(
   prompt: string,
   size: string = "1024x576"
@@ -27,7 +29,8 @@ export async function generateWaveSpeedImage(
   const apiKey = process.env.WAVESPEED_API_KEY;
   if (!apiKey) return { imageUrl: "", error: "WaveSpeed API key not configured" };
 
-  const res = await fetch(`${BASE_URL}/v1/wavespeed-ai/flux-schnell`, {
+  // Submit job
+  const submitRes = await fetch(`${BASE_URL}/wavespeed-ai/flux-schnell`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -41,22 +44,41 @@ export async function generateWaveSpeedImage(
     }),
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    return { imageUrl: "", error: `WaveSpeed error: ${text}` };
+  if (!submitRes.ok) {
+    const text = await submitRes.text();
+    return { imageUrl: "", error: `WaveSpeed submit error: ${text}` };
   }
 
-  const data = await res.json();
+  const submitData = await submitRes.json();
+  const predictionId = submitData?.data?.id ?? submitData?.id ?? "";
+  const resultUrl = submitData?.data?.urls?.get ?? `${RESULT_BASE}/${predictionId}/result`;
 
-  // WaveSpeed returns outputs array or data array
-  const url =
-    data?.outputs?.[0] ??
-    data?.data?.[0]?.url ??
-    data?.images?.[0]?.url ??
-    data?.url ?? "";
+  if (!predictionId) return { imageUrl: "", error: "No prediction ID returned" };
 
-  if (!url) return { imageUrl: "", error: "No image URL in response" };
-  return { imageUrl: url };
+  // Poll for result (max 30s)
+  for (let i = 0; i < 10; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+
+    const pollRes = await fetch(resultUrl, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    if (!pollRes.ok) continue;
+
+    const pollData = await pollRes.json();
+    const outputs: string[] = pollData?.data?.outputs ?? pollData?.outputs ?? [];
+    const status = pollData?.data?.status ?? pollData?.status ?? "";
+    const err = pollData?.data?.error ?? pollData?.error ?? "";
+
+    if (outputs.length > 0 && outputs[0]) {
+      return { imageUrl: outputs[0] };
+    }
+    if (err && err !== "" && status === "failed") {
+      return { imageUrl: "", error: err };
+    }
+  }
+
+  return { imageUrl: "", error: "WaveSpeed image generation timed out" };
 }
 
 // ── Video generation ─────────────────────────────────────────────────────────
@@ -64,9 +86,7 @@ export async function submitWaveSpeedJob(
   req: WaveSpeedJobRequest
 ): Promise<WaveSpeedJobResponse> {
   const apiKey = process.env.WAVESPEED_API_KEY;
-  if (!apiKey) {
-    return { jobId: "stub", status: "failed", error: "WaveSpeed API key not configured" };
-  }
+  if (!apiKey) return { jobId: "stub", status: "failed", error: "WaveSpeed API key not configured" };
 
   const body: Record<string, unknown> = {
     prompt: req.prompt,
@@ -89,7 +109,7 @@ export async function submitWaveSpeedJob(
   }
 
   const data = await res.json();
-  const jobId = data?.data?.task_id ?? data?.task_id ?? data?.id ?? "";
+  const jobId = data?.data?.id ?? data?.id ?? "";
   return { jobId, status: "queued" };
 }
 
@@ -97,7 +117,7 @@ export async function pollWaveSpeedJob(jobId: string): Promise<WaveSpeedJobRespo
   const apiKey = process.env.WAVESPEED_API_KEY;
   if (!apiKey) return { jobId, status: "failed", error: "WaveSpeed API key not configured" };
 
-  const res = await fetch(`${BASE_URL}/v1/query/result/?task_id=${jobId}`, {
+  const res = await fetch(`${RESULT_BASE}/${jobId}/result`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
 
@@ -106,10 +126,10 @@ export async function pollWaveSpeedJob(jobId: string): Promise<WaveSpeedJobRespo
   const data = await res.json();
   const taskData = data?.data ?? data;
   const status = taskData?.status ?? "";
+  const outputs: string[] = taskData?.outputs ?? [];
 
-  if (status === "completed" || status === "succeed") {
-    const videoUrl = taskData?.outputs?.[0] ?? taskData?.video_url ?? "";
-    return { jobId, status: "completed", videoUrl };
+  if (outputs.length > 0 && outputs[0]) {
+    return { jobId, status: "completed", videoUrl: outputs[0] };
   }
   if (status === "failed" || status === "error") {
     return { jobId, status: "failed", error: taskData?.error ?? "Failed" };
