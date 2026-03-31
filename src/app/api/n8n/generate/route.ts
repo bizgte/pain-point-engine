@@ -1,127 +1,112 @@
+/**
+ * POST /api/n8n/generate
+ * For Alfred / WF2 — generates viral social content using Viral Content Architect v2.0
+ *
+ * Request:
+ *   Headers: x-api-key: <key>
+ *   Body: { topic: string, channel?: string, mode?: "full"|"caption"|"image_prompt"|"video_prompt" }
+ *
+ * Response (mode=full):
+ *   { hook, caption, image_prompt, image_negative_prompt, video_prompt, recommended_video_model, text_overlay, virality_analysis }
+ *
+ * Response (mode=caption):
+ *   { caption: string }
+ *
+ * Response (mode=image_prompt):
+ *   { image_prompt: string, image_negative_prompt: string }
+ */
+
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { VIRAL_ARCHITECT_SYSTEM_PROMPT, QUICK_CAPTION_SYSTEM_PROMPT } from '@/lib/viral-architect-prompt';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+export const dynamic = 'force-dynamic';
 
-// Define the exact JSON schema we expect the AI to return.
-const responseSchema: any = {
-    type: SchemaType.ARRAY,
-    description: "An array of 10 highly-converting social media template posts tailored to the user's specific industry and pain points. Each array item represents one TemplateDefinition.",
-    items: {
-        type: SchemaType.OBJECT,
-        properties: {
-            id: { type: SchemaType.STRING, description: "A unique kebab-case identifier (e.g. 'custom-painpoint-name')" },
-            industryId: { type: SchemaType.STRING, description: "Should always be 'custom'" },
-            name: { type: SchemaType.STRING, description: "A catchy, short name for this template (e.g. 'The Empty Nester Downsize')" },
-            type: { type: SchemaType.STRING, description: "The format. One of: 'carousel', 'single', 'ad', or 'caption'" },
-            theme: { type: SchemaType.STRING, description: "The visual aesthetic. Return 'soft' for industries like wellness, beauty, coaching, arts, fashion, or anything requiring an elegant, light, peaceful vibe. Return 'default' for standard business, tech, or aggressive marketing industries." },
-            isVisualHeavy: { type: SchemaType.BOOLEAN, description: "Set to true if this template relies heavily on visuals and needs larger typography." },
-            goalTags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "Array of goals, e.g., 'leads', 'awareness', 'authority'" },
-            toneTags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "Array of tones, e.g., 'professional', 'friendly', 'bold'" },
-            platformTags: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "Array of platforms, e.g., 'instagram', 'facebook', 'linkedin'" },
-            variables: {
-                type: SchemaType.ARRAY,
-                description: "Array of variables the user needs to fill in to complete the template (e.g. city, offer name).",
-                items: {
-                    type: SchemaType.OBJECT,
-                    properties: {
-                        key: { type: SchemaType.STRING, description: "The variable key used in the text blocks, e.g. 'city'" },
-                        label: { type: SchemaType.STRING, description: "A human-readable prompt for the input field, e.g. 'Your City'" },
-                        required: { type: SchemaType.BOOLEAN, description: "Always true" }
-                    },
-                    required: ["key", "label", "required"]
-                }
-            },
-            blocks: {
-                type: SchemaType.ARRAY,
-                description: "The actual textual building blocks of the post.",
-                items: {
-                    type: SchemaType.OBJECT,
-                    properties: {
-                        kind: { type: SchemaType.STRING, description: "One of: 'headline', 'subhead', 'body', 'bullets', 'cta', 'disclaimer'" },
-                        text: { type: SchemaType.STRING, description: "The text content for this block. Use {{variable_key}} to inject variables defined above. If kind is 'bullets', this should be empty/omitted." },
-                        items: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: "If kind is 'bullets', this is an array of strings representing the bullet points. Otherwise omit." }
-                    },
-                    required: ["kind"]
-                }
-            },
-            deepDiveCaption: { type: SchemaType.STRING, description: "A long-form, highly detailed text caption that provides a deep dive into the psychological pain point being addressed. Formatted with line breaks." }
-        },
-        required: ["id", "industryId", "name", "type", "theme", "goalTags", "toneTags", "platformTags", "variables", "blocks", "deepDiveCaption"]
-    }
-};
-
-const VALID_API_KEYS = [
-    process.env.PUBLIC_API_KEY,
-    process.env.KIE_API_KEY,
-    'sk_prod_9f8d7e6c5b4a3f2e1d0c9b8a7f6e5d4c'
+const VALID_KEYS = [
+  process.env.PUBLIC_API_KEY,
+  process.env.N8N_API_KEY,
+  'sk_prod_9f8d7e6c5b4a3f2e1d0c9b8a7f6e5d4c',
 ].filter(Boolean);
 
+const CHANNEL_CONTEXT: Record<string, string> = {
+  '5ubzero':        'Tech-savvy early adopters, AI tools enthusiasts, builders and makers',
+  'thesmartlist':   'Business owners, entrepreneurs, automation fans, smart growth seekers',
+  'wealthnector':   'Investors, wealth-builders, high-income aspirants, financial freedom seekers',
+  'salalawigan':    'Filipino diaspora, proud Filipinos, local culture and lifestyle enthusiasts',
+  'moode':          'Emotionally intelligent adults, wellness seekers, personal growth community',
+  'baileysjournal': 'Journalers, personal development enthusiasts, habit builders',
+  'redflagscan':    'Freelancers, small business owners, contract-cautious professionals',
+  'gdprverify':     'EU business owners, compliance managers, GDPR-concerned organizations',
+  'velocityinvoice':'Freelancers, consultants, agency owners who hate chasing payments',
+  'operria':        'Trades business owners, HVAC/plumbing/electrical SMBs, service contractors',
+  'taglearning':    'Parents, educators, adult learners, AI-curious professionals',
+  'appublishing':   'Indie developers, micro-SaaS builders, digital product sellers',
+};
+
 export async function POST(req: Request) {
-    try {
-        // Authenticate Request
-        const apiKey = req.headers.get('x-api-key') || req.headers.get('authorization')?.replace('Bearer ', '');
+  const apiKey = req.headers.get('x-api-key') ?? '';
+  if (!VALID_KEYS.includes(apiKey)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-        if (!apiKey || !VALID_API_KEYS.includes(apiKey)) {
-            return NextResponse.json(
-                { error: 'Unauthorized. Invalid or missing x-api-key header.' },
-                { status: 401 }
-            );
-        }
+  if (!process.env.GEMINI_API_KEY) {
+    return NextResponse.json({ error: 'GEMINI_API_KEY not configured' }, { status: 500 });
+  }
 
-        const body = await req.json();
-        const { industryName } = body;
+  try {
+    const { topic, channel, mode = 'full', industryName } = await req.json();
+    const resolvedTopic = topic ?? industryName;
+    if (!resolvedTopic) return NextResponse.json({ error: 'topic or industryName is required' }, { status: 400 });
 
-        if (!industryName) {
-            return NextResponse.json({ error: 'industryName is required in JSON body' }, { status: 400 });
-        }
+    const channelKey = (channel ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const audienceContext = CHANNEL_CONTEXT[channelKey] ?? 'General social media audience';
 
-        if (!process.env.GEMINI_API_KEY) {
-            return NextResponse.json({ error: 'GEMINI_API_KEY is not configured on the server.' }, { status: 500 });
-        }
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: responseSchema,
-                temperature: 0.7,
-            }
-        });
-
-        const prompt = `You are an expert, top-tier direct response copywriter and social media strategist.
-The user wants to generate a "Pain Point Template Pack" for their specific industry: "${industryName}".
-Your job is to identify the 10 deepest, most urgent psychological pain points, objections, and desires of their target customer, and then write 10 distinct, highly-converting social media posts (templates) addressing them.
-
-DO NOT write generic, boring AI text. Write punchy, authoritative, and persuasive copy or soft, elegant, and peaceful copy depending on what fits the industry best. Pick the correct 'theme' (soft or default) based on the industry's vibe!
-Use the variables array to leave placeholders like {{city}}, {{offer}}, {{years_experience}} for the user to fill in later.
-Ensure the 'blocks' array builds a complete visual post (headline -> subhead -> body/bullets -> cta).
-Ensure the 'deepDiveCaption' is a long-form, 2-3 paragraph textual caption providing immense value and context.
-You must return EXACTLY 10 templates.`;
-
-        const result = await model.generateContent(prompt);
-        let responseText = result.response.text();
-
-        // Strip out any markdown block formatting that Gemini might randomly inject
-        if (responseText.startsWith('\`\`\`json')) {
-            responseText = responseText.replace(/^\`\`\`json\n?/, '').replace(/\`\`\`$/, '');
-        } else if (responseText.startsWith('\`\`\`')) {
-            responseText = responseText.replace(/^\`\`\`\n?/, '').replace(/\`\`\`$/, '');
-        }
-
-        const parsedContent = JSON.parse(responseText);
-
-        return NextResponse.json({
-            success: true,
-            industry: industryName,
-            templates: parsedContent
-        });
-
-    } catch (error: any) {
-        console.error('Error generating n8n templates:', error);
-        return NextResponse.json(
-            { error: 'Failed to generate templates. Details: ' + (error.message || 'Unknown Gemini API error.') },
-            { status: 500 }
-        );
+    if (mode === 'caption') {
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const result = await model.generateContent({
+        systemInstruction: QUICK_CAPTION_SYSTEM_PROMPT,
+        contents: [{ role: 'user', parts: [{ text: `Topic: ${resolvedTopic}\nChannel audience: ${audienceContext}\nChannel: ${channel ?? 'general'}` }] }],
+      });
+      return NextResponse.json({ caption: result.response.text().trim() });
     }
+
+    // Full viral architect output
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.9,
+        maxOutputTokens: 4096,
+      },
+    });
+
+    const userPrompt = `Topic: ${resolvedTopic}
+Channel: ${channel ?? 'general'}
+Target audience: ${audienceContext}
+
+Generate a complete Viral Content Architect output. Return valid JSON only.`;
+
+    const result = await model.generateContent({
+      systemInstruction: VIRAL_ARCHITECT_SYSTEM_PROMPT,
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+    });
+
+    const raw = result.response.text().trim();
+    let parsed: any;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      // Try to extract JSON from response
+      const match = raw.match(/\{[\s\S]*\}/);
+      parsed = match ? JSON.parse(match[0]) : { raw_output: raw };
+    }
+
+    return NextResponse.json({ ...parsed, channel: channel ?? null, topic: resolvedTopic });
+
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
