@@ -4,7 +4,7 @@
  *
  * Request:
  *   Headers: x-api-key: <key>
- *   Body: { topic: string, channel?: string, mode?: "full"|"caption"|"image_prompt"|"video_prompt" }
+ *   Body: { topic: string, channel?: string, mode?: "full"|"caption"|"captions_all"|"image_prompt"|"video_prompt" }
  *
  * Response (mode=full):
  *   { hook, caption, image_prompt, image_negative_prompt, video_prompt, recommended_video_model, text_overlay, virality_analysis }
@@ -18,7 +18,7 @@
 
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { VIRAL_ARCHITECT_SYSTEM_PROMPT, QUICK_CAPTION_SYSTEM_PROMPT } from '@/lib/viral-architect-prompt';
+import { VIRAL_ARCHITECT_SYSTEM_PROMPT, QUICK_CAPTION_SYSTEM_PROMPT, PLATFORM_CAPTION_SYSTEM_PROMPT } from '@/lib/viral-architect-prompt';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,6 +70,21 @@ export async function POST(req: Request) {
         contents: [{ role: 'user', parts: [{ text: `Topic: ${resolvedTopic}\nChannel audience: ${audienceContext}\nChannel: ${channel ?? 'general'}` }] }],
       });
       return NextResponse.json({ caption: result.response.text().trim() });
+    }
+
+    if (mode === 'captions_all') {
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', generationConfig: { responseMimeType: 'application/json', temperature: 0.9 } });
+      const result = await model.generateContent({
+        systemInstruction: PLATFORM_CAPTION_SYSTEM_PROMPT,
+        contents: [{ role: 'user', parts: [{ text:  }] }],
+      });
+      const raw = result.response.text().trim();
+      try {
+        const parsed = JSON.parse(raw);
+        return NextResponse.json({ captions: parsed, channel: channel ?? null, topic: resolvedTopic });
+      } catch {
+        return NextResponse.json({ captions: { raw }, channel: channel ?? null });
+      }
     }
 
     // Full viral architect output
