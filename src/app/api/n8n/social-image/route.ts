@@ -80,10 +80,11 @@ export async function POST(req: Request) {
 
     const isPermanent = !cloudResult.error;
     return NextResponse.json({
-      imageUrl: cloudResult.url,      // Cloudinary URL if available, else WaveSpeed CDN
+      imageUrl: cloudResult.url,
       provider: isPermanent ? 'cloudinary' : 'wavespeed',
       permanent: isPermanent,
       publicId: cloudResult.publicId || undefined,
+      ...(cloudResult.error ? { _cloudinary_error: cloudResult.error } : {}),
     });
 
   } catch (err) {
