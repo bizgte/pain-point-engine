@@ -1,6 +1,7 @@
 /**
- * Upload a URL or buffer to Cloudinary using unsigned preset.
+ * Upload a URL to Cloudinary using unsigned preset.
  * Returns a permanent Cloudinary URL.
+ * Uses URLSearchParams (not FormData) for reliable server-side uploads.
  */
 
 export interface CloudinaryUploadResult {
@@ -17,23 +18,28 @@ export async function uploadToCloudinary(
   const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET ?? "alma_unsigned";
 
   if (!cloudName) {
-    return { url: sourceUrl, publicId: "", error: "CLOUDINARY_CLOUD_NAME not set — returning original URL" };
+    return { url: sourceUrl, publicId: "", error: "CLOUDINARY_CLOUD_NAME not set" };
   }
 
   try {
-    const formData = new FormData();
-    formData.append("file", sourceUrl);
-    formData.append("upload_preset", uploadPreset);
-    formData.append("folder", folder);
+    // Use URLSearchParams — works reliably in Next.js server-side / Node.js
+    const params = new URLSearchParams({
+      file: sourceUrl,
+      upload_preset: uploadPreset,
+    });
 
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      { method: "POST", body: formData }
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
+      }
     );
 
     if (!res.ok) {
       const text = await res.text();
-      return { url: sourceUrl, publicId: "", error: `Cloudinary error: ${text}` };
+      return { url: sourceUrl, publicId: "", error: `Cloudinary ${res.status}: ${text.slice(0, 200)}` };
     }
 
     const data = await res.json();
@@ -49,7 +55,6 @@ export async function uploadToCloudinary(
 
 export async function uploadVideoToCloudinary(
   sourceUrl: string,
-  folder: string = "contengine/videos"
 ): Promise<CloudinaryUploadResult> {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET ?? "alma_unsigned";
@@ -59,20 +64,24 @@ export async function uploadVideoToCloudinary(
   }
 
   try {
-    const formData = new FormData();
-    formData.append("file", sourceUrl);
-    formData.append("upload_preset", uploadPreset);
-    formData.append("folder", folder);
-    formData.append("resource_type", "video");
+    const params = new URLSearchParams({
+      file: sourceUrl,
+      upload_preset: uploadPreset,
+      resource_type: "video",
+    });
 
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
-      { method: "POST", body: formData }
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
+      }
     );
 
     if (!res.ok) {
       const text = await res.text();
-      return { url: sourceUrl, publicId: "", error: `Cloudinary video error: ${text}` };
+      return { url: sourceUrl, publicId: "", error: `Cloudinary video ${res.status}: ${text.slice(0, 200)}` };
     }
 
     const data = await res.json();
