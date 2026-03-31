@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', generationConfig: { responseMimeType: 'application/json', temperature: 0.9 } });
       const result = await model.generateContent({
         systemInstruction: PLATFORM_CAPTION_SYSTEM_PROMPT,
-        contents: [{ role: 'user', parts: [{ text:  }] }],
+        contents: [{ role: 'user', parts: [{ text: `Topic: ${resolvedTopic}\nChannel: ${channel ?? 'general'}\nAudience: ${audienceContext}` }] }],
       });
       const raw = result.response.text().trim();
       try {
