@@ -2,18 +2,14 @@
  * POST /api/n8n/generate
  * For Alfred / WF2 — generates viral social content using Viral Content Architect v2.0
  *
+ * Primary LLM: Ollama gemma4:e4b @ 192.168.100.33:11434 (free, local inference)
+ * Fallback LLM: Gemini 2.5 Flash (cloud, used if Ollama unreachable or fails)
+ *
  * Request:
  *   Headers: x-api-key: <key>
  *   Body: { topic: string, channel?: string, mode?: "full"|"caption"|"captions_all"|"image_prompt"|"video_prompt" }
  *
- * Response (mode=full):
- *   { hook, caption, image_prompt, image_negative_prompt, video_prompt, recommended_video_model, text_overlay, virality_analysis }
- *
- * Response (mode=caption):
- *   { caption: string }
- *
- * Response (mode=image_prompt):
- *   { image_prompt: string, image_negative_prompt: string }
+ * Response includes `engine` field: "ollama" | "gemini"
  */
 
 import { NextResponse } from 'next/server';
@@ -27,6 +23,9 @@ const VALID_KEYS = [
   process.env.N8N_API_KEY,
   'sk_prod_9f8d7e6c5b4a3f2e1d0c9b8a7f6e5d4c',
 ].filter(Boolean);
+
+const OLLAMA_BASE = process.env.OLLAMA_URL ?? 'http://192.168.100.33:11434';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'gemma4:e4b';
 
 const CHANNEL_CONTEXT: Record<string, string> = {
   '5ubzero':        'Tech-savvy early adopters, AI tools enthusiasts, builders and makers',
@@ -43,14 +42,46 @@ const CHANNEL_CONTEXT: Record<string, string> = {
   'appublishing':   'Indie developers, micro-SaaS builders, digital product sellers',
 };
 
+// ── Ollama helpers ────────────────────────────────────────────────────────────
+
+async function ollamaGenerate(systemPrompt: string, userPrompt: string, json = false): Promise<string> {
+  const prompt = `${systemPrompt}\n\n${userPrompt}`;
+  const body: any = {
+    model: OLLAMA_MODEL,
+    prompt,
+    stream: false,
+    options: { temperature: 0.85, num_predict: 2000 },
+  };
+  if (json) body.format = 'json';
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+  try {
+    const res = await fetch(`${OLLAMA_BASE}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
+    const d = await res.json();
+    const text = (d.response ?? '').trim();
+    if (!text) throw new Error('Ollama returned empty response');
+    return text;
+  } catch (err) {
+    clearTimeout(timeout);
+    throw err;
+  }
+}
+
+// ── Main handler ──────────────────────────────────────────────────────────────
+
 export async function POST(req: Request) {
   const apiKey = req.headers.get('x-api-key') ?? '';
   if (!VALID_KEYS.includes(apiKey)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  if (!process.env.GEMINI_API_KEY) {
-    return NextResponse.json({ error: 'GEMINI_API_KEY not configured' }, { status: 500 });
   }
 
   try {
@@ -61,64 +92,95 @@ export async function POST(req: Request) {
     const channelKey = (channel ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const audienceContext = CHANNEL_CONTEXT[channelKey] ?? 'General social media audience';
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
+    // ── caption mode ──────────────────────────────────────────────────────────
     if (mode === 'caption') {
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-      const result = await model.generateContent({
-        systemInstruction: QUICK_CAPTION_SYSTEM_PROMPT,
-        contents: [{ role: 'user', parts: [{ text: `Topic: ${resolvedTopic}\nChannel audience: ${audienceContext}\nChannel: ${channel ?? 'general'}` }] }],
-      });
-      return NextResponse.json({ caption: result.response.text().trim() });
-    }
+      const userPrompt = `Topic: ${resolvedTopic}\nChannel audience: ${audienceContext}\nChannel: ${channel ?? 'general'}\n\nWrite a single viral Facebook caption under 120 words. No hashtags. No preamble. Just the caption text.`;
+      let caption = '';
+      let engine = 'ollama';
 
-    if (mode === 'captions_all') {
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', generationConfig: { responseMimeType: 'application/json', temperature: 0.9 } });
-      const result = await model.generateContent({
-        systemInstruction: PLATFORM_CAPTION_SYSTEM_PROMPT,
-        contents: [{ role: 'user', parts: [{ text: `Topic: ${resolvedTopic}\nChannel: ${channel ?? 'general'}\nAudience: ${audienceContext}` }] }],
-      });
-      const raw = result.response.text().trim();
       try {
-        const parsed = JSON.parse(raw);
-        return NextResponse.json({ captions: parsed, channel: channel ?? null, topic: resolvedTopic });
+        caption = await ollamaGenerate(QUICK_CAPTION_SYSTEM_PROMPT, userPrompt);
       } catch {
-        return NextResponse.json({ captions: { raw }, channel: channel ?? null });
+        engine = 'gemini';
+        if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured');
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const result = await model.generateContent({
+          systemInstruction: QUICK_CAPTION_SYSTEM_PROMPT,
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        });
+        caption = result.response.text().trim();
       }
+
+      return NextResponse.json({ caption, engine });
     }
 
-    // Full viral architect output
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0.9,
-        maxOutputTokens: 4096,
-      },
-    });
+    // ── captions_all mode ─────────────────────────────────────────────────────
+    if (mode === 'captions_all') {
+      const userPrompt = `Topic: ${resolvedTopic}\nChannel: ${channel ?? 'general'}\nAudience: ${audienceContext}\n\nReturn a JSON object with platform captions. No preamble.`;
+      let engine = 'ollama';
+      let parsed: any;
 
+      try {
+        const raw = await ollamaGenerate(PLATFORM_CAPTION_SYSTEM_PROMPT, userPrompt, true);
+        parsed = JSON.parse(raw);
+      } catch {
+        engine = 'gemini';
+        if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured');
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', generationConfig: { responseMimeType: 'application/json', temperature: 0.9 } });
+        const result = await model.generateContent({
+          systemInstruction: PLATFORM_CAPTION_SYSTEM_PROMPT,
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        });
+        const raw = result.response.text().trim();
+        try { parsed = JSON.parse(raw); } catch { parsed = { raw }; }
+      }
+
+      return NextResponse.json({ captions: parsed, channel: channel ?? null, topic: resolvedTopic, engine });
+    }
+
+    // ── full viral architect mode ─────────────────────────────────────────────
     const userPrompt = `Topic: ${resolvedTopic}
 Channel: ${channel ?? 'general'}
 Target audience: ${audienceContext}
 
 Generate a complete Viral Content Architect output. Return valid JSON only.`;
 
-    const result = await model.generateContent({
-      systemInstruction: VIRAL_ARCHITECT_SYSTEM_PROMPT,
-      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-    });
-
-    const raw = result.response.text().trim();
     let parsed: any;
+    let engine = 'ollama';
+
     try {
-      parsed = JSON.parse(raw);
+      const raw = await ollamaGenerate(VIRAL_ARCHITECT_SYSTEM_PROMPT, userPrompt, true);
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        const match = raw.match(/\{[\s\S]*\}/);
+        parsed = match ? JSON.parse(match[0]) : { raw_output: raw };
+      }
     } catch {
-      // Try to extract JSON from response
-      const match = raw.match(/\{[\s\S]*\}/);
-      parsed = match ? JSON.parse(match[0]) : { raw_output: raw };
+      // Gemini fallback
+      engine = 'gemini';
+      if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured and Ollama unavailable');
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.9, maxOutputTokens: 4096 },
+      });
+      const result = await model.generateContent({
+        systemInstruction: VIRAL_ARCHITECT_SYSTEM_PROMPT,
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      });
+      const raw = result.response.text().trim();
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        const match = raw.match(/\{[\s\S]*\}/);
+        parsed = match ? JSON.parse(match[0]) : { raw_output: raw };
+      }
     }
 
-    return NextResponse.json({ ...parsed, channel: channel ?? null, topic: resolvedTopic });
+    return NextResponse.json({ ...parsed, channel: channel ?? null, topic: resolvedTopic, engine });
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
