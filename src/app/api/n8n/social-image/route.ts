@@ -15,6 +15,37 @@ import { NextResponse } from 'next/server';
 import { generateWaveSpeedImage } from '@/lib/providers/wavespeed';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 
+async function generateDalleImage(prompt: string): Promise<{ imageUrl?: string; error?: string }> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return { error: 'OpenAI API key not configured' };
+  try {
+    const res = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'dall-e-3',
+        prompt,
+        n: 1,
+        size: '1024x1024',
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      return { error: `DALL-E error: ${errText}` };
+    }
+    const data = await res.json();
+    const url = data?.data?.[0]?.url;
+    return url ? { imageUrl: url } : { error: 'No image URL returned from DALL-E' };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Unknown DALL-E exception';
+    return { error: msg };
+  }
+}
+
+
 export const dynamic = 'force-dynamic';
 
 const VALID_KEYS = [
@@ -61,7 +92,18 @@ export async function POST(req: Request) {
     ].join(' ');
 
     // Generate via WaveSpeed flux-schnell
-    const result = await generateWaveSpeedImage(prompt, size ?? '1200x630');
+    let result = await generateWaveSpeedImage(prompt, size ?? '1200x630');
+
+    if (!result.imageUrl) {
+      console.log('WaveSpeed failed, falling back to DALL-E 3...');
+      const dalleRes = await generateDalleImage(prompt);
+      if (dalleRes.imageUrl) {
+        result = { imageUrl: dalleRes.imageUrl };
+      } else {
+        console.error('DALL-E 3 fallback failed:', dalleRes.error);
+        result.error = `WaveSpeed: ${result.error} | DALL-E 3: ${dalleRes.error}`;
+      }
+    }
 
     if (!result.imageUrl) {
       // Final fallback: deterministic picsum
